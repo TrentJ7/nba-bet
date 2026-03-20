@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 
+
 // THE SCRAPER TARGET (Do not change this variable name or formatting)
 const TEAM_METRICS: Record<string, { off: number, def: number }> = {
   "Oklahoma City Thunder": {
@@ -7,8 +8,8 @@ const TEAM_METRICS: Record<string, { off: number, def: number }> = {
     "def": 0.93
   },
   "San Antonio Spurs": {
-    "off": 1.029,
-    "def": 0.966
+    "off": 1.027,
+    "def": 0.965
   },
   "Boston Celtics": {
     "off": 1.042,
@@ -16,15 +17,15 @@ const TEAM_METRICS: Record<string, { off: number, def: number }> = {
   },
   "Detroit Pistons": {
     "off": 1.018,
-    "def": 0.952
+    "def": 0.951
   },
   "New York Knicks": {
     "off": 1.035,
     "def": 0.977
   },
   "Cleveland Cavaliers": {
-    "off": 1.028,
-    "def": 0.991
+    "off": 1.027,
+    "def": 0.99
   },
   "Denver Nuggets": {
     "off": 1.051,
@@ -35,7 +36,7 @@ const TEAM_METRICS: Record<string, { off: number, def: number }> = {
     "def": 0.982
   },
   "Charlotte Hornets": {
-    "off": 1.027,
+    "off": 1.028,
     "def": 0.994
   },
   "Minnesota Timberwolves": {
@@ -43,24 +44,24 @@ const TEAM_METRICS: Record<string, { off: number, def: number }> = {
     "def": 0.986
   },
   "Miami Heat": {
-    "off": 1.001,
-    "def": 0.974
+    "off": 1.002,
+    "def": 0.976
   },
   "Toronto Raptors": {
     "off": 0.995,
     "def": 0.978
   },
-  "Orlando Magic": {
-    "off": 0.996,
-    "def": 0.986
-  },
   "Los Angeles Lakers": {
-    "off": 1.022,
-    "def": 1.01
+    "off": 1.024,
+    "def": 1.012
   },
   "Phoenix Suns": {
-    "off": 0.998,
-    "def": 0.989
+    "off": 0.997,
+    "def": 0.988
+  },
+  "Orlando Magic": {
+    "off": 0.996,
+    "def": 0.988
   },
   "Atlanta Hawks": {
     "off": 1,
@@ -71,11 +72,11 @@ const TEAM_METRICS: Record<string, { off: number, def: number }> = {
     "def": 0.992
   },
   "Los Angeles Clippers": {
-    "off": 1.014,
-    "def": 1.01
+    "off": 1.013,
+    "def": 1.009
   },
   "Philadelphia 76ers": {
-    "off": 0.994,
+    "off": 0.997,
     "def": 1.001
   },
   "Portland Trail Blazers": {
@@ -87,24 +88,24 @@ const TEAM_METRICS: Record<string, { off: number, def: number }> = {
     "def": 1.011
   },
   "New Orleans Pelicans": {
-    "off": 0.993,
-    "def": 1.027
+    "off": 0.992,
+    "def": 1.025
   },
   "Chicago Bulls": {
-    "off": 0.981,
-    "def": 1.019
-  },
-  "Milwaukee Bucks": {
     "off": 0.98,
-    "def": 1.025
+    "def": 1.019
   },
   "Dallas Mavericks": {
     "off": 0.958,
     "def": 1.002
   },
+  "Milwaukee Bucks": {
+    "off": 0.978,
+    "def": 1.026
+  },
   "Utah Jazz": {
-    "off": 0.991,
-    "def": 1.058
+    "off": 0.992,
+    "def": 1.055
   },
   "Indiana Pacers": {
     "off": 0.953,
@@ -115,11 +116,11 @@ const TEAM_METRICS: Record<string, { off: number, def: number }> = {
     "def": 1.031
   },
   "Sacramento Kings": {
-    "off": 0.958,
-    "def": 1.045
+    "off": 0.959,
+    "def": 1.047
   },
   "Washington Wizards": {
-    "off": 0.962,
+    "off": 0.96,
     "def": 1.056
   }
 };
@@ -134,12 +135,14 @@ export async function GET() {
 
     const propPromises = games.slice(0, 10).map(async (game: any) => {
       const url = `https://api.the-odds-api.com/v4/sports/basketball_nba/events/${game.id}/odds?apiKey=${oddsKey}&regions=us_dfs&markets=player_points,player_rebounds,player_assists&bookmakers=prizepicks`;
+
       const res = await fetch(url);
       return res.json();
     });
 
     const allGamesData = await Promise.all(propPromises);
     const results: any[] = [];
+
 
     allGamesData.forEach((gameData: any) => {
       if (!gameData.bookmakers) return;
@@ -164,9 +167,23 @@ export async function GET() {
             offFactor: TEAM_METRICS[playerTeam]?.off || 1.0,
             defFactor: TEAM_METRICS[opponent]?.def || 1.0,
             bookie: "PrizePicks"
+
+
+
+
+
+
+
+
+
+
+
+
           });
         });
       });
+
+
     });
 
     return NextResponse.json(results);
