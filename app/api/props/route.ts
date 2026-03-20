@@ -1,28 +1,30 @@
 import { NextResponse } from 'next/server';
 import { PropPrediction } from '@/lib/types';
 
-// Helper to simulate a "Statistical Projection" 
-// In a production app, you'd fetch the player's L10 average from an API like BallDontLie
+// Simulation of a statistical projection model
 const getPlayerProjection = (playerName: string, bookieLine: number) => {
-  // Logic: For a real CS project, you'd use: (0.7 * Last10Avg) + (0.3 * SeasonAvg)
-  // For now, we'll use a weighted random to simulate a model's variance
-  const variance = (Math.random() * 6) - 2.5; 
+  // A real model would use: (0.7 * L10_Avg) + (0.3 * Season_Avg)
+  // We use a controlled variance to simulate a model's prediction
+  const variance = (Math.random() * 8) - 4; 
   return (bookieLine + variance).toFixed(1);
 };
 
 export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const search = searchParams.get('search')?.toLowerCase();
+  
   const apiKey = process.env.NEXT_PUBLIC_ODDS_API_KEY;
   if (!apiKey) return NextResponse.json({ error: 'Missing API Key' }, { status: 500 });
 
   try {
-    // 1. Fetch live NBA games to get Event IDs
+    // 1. Fetch current NBA games
     const gamesRes = await fetch(
       `https://api.the-odds-api.com/v4/sports/basketball_nba/events?apiKey=${apiKey}`
     );
     const games = await gamesRes.json();
 
-    // 2. Fetch Props for the first 5 games (to stay within free tier limits)
-    const propPromises = games.slice(0, 5).map(async (game: any) => {
+    // 2. Fetch props for the first 8 games (adjust slice based on your API quota)
+    const propPromises = games.slice(0, 8).map(async (game: any) => {
       const url = `https://api.the-odds-api.com/v4/sports/basketball_nba/events/${game.id}/odds?apiKey=${apiKey}&regions=us&markets=player_points&bookmakers=draftkings`;
       const res = await fetch(url);
       return res.json();
@@ -30,40 +32,53 @@ export async function GET(request: Request) {
 
     const allPropsData = await Promise.all(propPromises);
 
-    // 3. Transform Raw API data into PropPrediction format
-    const actualPredictions: PropPrediction[] = allPropsData.flatMap((gameData: any) => {
+    // 3. Transform and Fix Duplicate Keys
+    let predictions: PropPrediction[] = allPropsData.flatMap((gameData: any) => {
       const market = gameData.bookmakers?.[0]?.markets?.[0];
-      if (!market) return []; // Skip games with no lines yet
+      if (!market) return [];
 
-      return market.outcomes.map((outcome: any) => {
+      // FIX: Only look at 'Over' outcomes to avoid duplicate player cards
+      // The line is the same for Over and Under, so we only need one to calculate edge
+      const overOutcomes = market.outcomes.filter((o: any) => o.name === 'Over');
+
+      return overOutcomes.map((outcome: any) => {
         const line = outcome.point;
         const player = outcome.description;
         const projection = getPlayerProjection(player, line);
         
-        // Calculate the Edge
+        // Edge Calculation Formula:
+        // Edge = ((Projection / Line) - 1) * 100
         const edgeValue = ((parseFloat(projection) / line) - 1) * 100;
 
         return {
-          id: `${gameData.id}-${player}`,
+          id: `${gameData.id}-${player.replace(/\s+/g, '-')}-points`,
           player: player,
           team: gameData.home_team,
           metric: 'Points',
           line: line,
           projection: projection,
           edge: edgeValue.toFixed(1),
-          recommendation: edgeValue > 7 ? 'OVER' : edgeValue < -7 ? 'UNDER' : 'PASS',
+          recommendation: edgeValue > 8 ? 'OVER' : edgeValue < -8 ? 'UNDER' : 'PASS',
         };
       });
     });
 
-    // Sort by highest edge so the best bets are at the top
-    const sortedPredictions = actualPredictions.sort((a, b) => 
+    // 4. Handle Search (Filter by Player Name)
+    if (search) {
+      predictions = predictions.filter(p => 
+        p.player.toLowerCase().includes(search)
+      );
+    }
+
+    // 5. SORT BY MOST PROBABLE (Highest absolute edge)
+    // This puts the "Best Value" picks at the top of the list
+    const sortedPredictions = predictions.sort((a, b) => 
       Math.abs(parseFloat(b.edge)) - Math.abs(parseFloat(a.edge))
     );
 
     return NextResponse.json(sortedPredictions);
   } catch (e) {
-    console.error("Extraction Error:", e);
-    return NextResponse.json({ error: 'Failed to process sports data' }, { status: 500 });
+    console.error("Route Error:", e);
+    return NextResponse.json({ error: 'Failed to fetch live props' }, { status: 500 });
   }
 }
