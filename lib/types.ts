@@ -7,4 +7,5 @@ export interface PropPrediction {
   projection: string;
   edge: string;
   recommendation: 'OVER' | 'UNDER' | 'PASS';
+  bookie: string;
 }
