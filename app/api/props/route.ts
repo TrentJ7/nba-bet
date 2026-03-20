@@ -25,7 +25,8 @@ export async function GET(request: Request) {
 
     // 2. Fetch props for the first 8 games (adjust slice based on your API quota)
     const propPromises = games.slice(0, 8).map(async (game: any) => {
-      const url = `https://api.the-odds-api.com/v4/sports/basketball_nba/events/${game.id}/odds?apiKey=${apiKey}&regions=us&markets=player_points&bookmakers=draftkings`;
+      // Inside the map function in route.ts:
+const url = `https://api.the-odds-api.com/v4/sports/basketball_nba/events/${game.id}/odds?apiKey=${apiKey}&regions=us&markets=player_points,player_rebounds,player_assists&bookmakers=draftkings`;
       const res = await fetch(url);
       return res.json();
     });
