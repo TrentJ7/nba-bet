@@ -8,4 +8,6 @@ export interface PropPrediction {
   edge: string;
   recommendation: 'OVER' | 'UNDER' | 'PASS';
   bookie: string;
+  offFactor: number;
+  defFactor: number;
 }

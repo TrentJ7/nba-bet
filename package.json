@@ -2,13 +2,16 @@
   "name": "nba-bet",
   "version": "0.1.0",
   "private": true,
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint"
-  },
+"scripts": {
+  "dev": "next dev",
+  "build": "next build",
+  "start": "next start",
+  "lint": "next lint",
+  "update-stats": "node scripts/updateStats.mjs"
+},
   "dependencies": {
+    "axios": "^1.13.6",
+    "cheerio": "^1.2.0",
     "date-fns": "^4.1.0",
     "lucide-react": "^0.577.0",
     "next": "16.2.0",
