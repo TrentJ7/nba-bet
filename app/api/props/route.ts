@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
+import fs from 'fs';
+import path from 'path';
 
-
-// THE SCRAPER TARGET (Do not change this variable name or formatting)
+// ⚓ SCRAPER ANCHOR: The updateStats script will fill this.
+// Do not change this variable name or formatting.
 const TEAM_METRICS: Record<string, { off: number, def: number }> = {
   "Oklahoma City Thunder": {
     "off": 1.024,
@@ -130,12 +132,24 @@ export async function GET() {
   if (!oddsKey) return NextResponse.json({ error: 'Key Missing' }, { status: 500 });
 
   try {
+    // 1. Load the Scraped Rosters from lib/rosters.json
+    // Using process.cwd() ensures it finds the file in your root folder
+    const rostersPath = path.resolve(process.cwd(), 'lib/rosters.json');
+    let ROSTERS: Record<string, string> = {};
+    
+    if (fs.existsSync(rostersPath)) {
+      ROSTERS = JSON.parse(fs.readFileSync(rostersPath, 'utf8'));
+    }
+
+    // 2. Fetch NBA Events from The Odds API
     const gamesRes = await fetch(`https://api.the-odds-api.com/v4/sports/basketball_nba/events?apiKey=${oddsKey}`);
     const games = await gamesRes.json();
 
+    if (!Array.isArray(games)) return NextResponse.json({ error: 'API Error' }, { status: 500 });
+
+    // 3. Fetch PrizePicks Props for the top 10 games
     const propPromises = games.slice(0, 10).map(async (game: any) => {
       const url = `https://api.the-odds-api.com/v4/sports/basketball_nba/events/${game.id}/odds?apiKey=${oddsKey}&regions=us_dfs&markets=player_points,player_rebounds,player_assists&bookmakers=prizepicks`;
-
       const res = await fetch(url);
       return res.json();
     });
@@ -143,51 +157,47 @@ export async function GET() {
     const allGamesData = await Promise.all(propPromises);
     const results: any[] = [];
 
-
     allGamesData.forEach((gameData: any) => {
       if (!gameData.bookmakers) return;
       const pp = gameData.bookmakers.find((b: any) => b.key === 'prizepicks');
       if (!pp) return;
 
+      const homeTeam = gameData.home_team;
+      const awayTeam = gameData.away_team;
+
       pp.markets.forEach((market: any) => {
         market.outcomes.filter((o: any) => o.name === 'Over').forEach((outcome: any) => {
-          const player = outcome.description;
-          // Logic: If home team isn't the player, they are away.
-          const isHome = gameData.home_team.includes(player) || player.includes(gameData.home_team);
-          const playerTeam = isHome ? gameData.home_team : gameData.away_team;
-          const opponent = isHome ? gameData.away_team : gameData.home_team;
+          const playerName = outcome.description;
+          
+          /**
+           * 🏀 THE FIX: MATCH PLAYER TO TEAM
+           * We check our ESPN-synced roster file first.
+           */
+          const playerTeam = ROSTERS[playerName] || homeTeam;
+          
+          // Logic: If the player is on the Home Team, their opponent is Away.
+          // Otherwise, their opponent is Home.
+          const opponent = (playerTeam === homeTeam) ? awayTeam : homeTeam;
 
           results.push({
-            id: `${gameData.id}-${player}-${market.key}`.replace(/\s+/g, '-'),
-            player,
+            id: `${gameData.id}-${playerName}-${market.key}`.replace(/\s+/g, '-'),
+            player: playerName,
             team: playerTeam,
-            opponent,
+            opponent: opponent,
             metric: market.key.replace('player_', '').toUpperCase(),
             line: outcome.point,
+            // 📈 Pull the correct factors based on the mapping above
             offFactor: TEAM_METRICS[playerTeam]?.off || 1.0,
             defFactor: TEAM_METRICS[opponent]?.def || 1.0,
             bookie: "PrizePicks"
-
-
-
-
-
-
-
-
-
-
-
-
           });
         });
       });
-
-
     });
 
     return NextResponse.json(results);
   } catch (error) {
+    console.error("API Route Error:", error);
     return NextResponse.json({ error: 'Server Error' }, { status: 500 });
   }
 }

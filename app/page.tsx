@@ -58,7 +58,7 @@ export default function PrizePicksDashboard() {
         <header className="mb-12 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8">
 
           <div>
-            <h1 className="text-6xl font-black text-white italic tracking-tighter">PP <span className="text-orange-600">PRO</span></h1>
+            <h1 className="text-6xl font-black text-white italic tracking-tighter">Edge-<span className="text-orange-600">Maxxer</span></h1>
             <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.4em] mt-2 flex items-center gap-2">
               <Zap size={12} className="text-orange-500 fill-orange-500" /> Bivariate Matchup Engine
             </p>
